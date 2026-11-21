@@ -131,7 +131,7 @@ private fun Root() {
     var wpFallback by remember { mutableStateOf(false) }
     val wpLauncherRef = remember { mutableStateOf<androidx.activity.result.ActivityResultLauncher<Intent>?>(null) }
     val wpLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
-        val quick = android.os.SystemClock.elapsedRealtime() - wpStart < 1500
+        val quick = android.os.SystemClock.elapsedRealtime() - wpStart < 4000
         if (wpStart != 0L && quick && !wpFallback && !isOurWallpaper(ctx)) { wpFallback = true; openChooser(ctx, wpLauncherRef.value!!) }
         else wpFallback = false
         wpStart = 0L
@@ -225,14 +225,24 @@ private fun setWallpaper(ctx: Context, launcher: androidx.activity.result.Activi
     }
     val cn = ComponentName(ctx, AsciiWallpaperService::class.java)
     startedAt(android.os.SystemClock.elapsedRealtime())
-    try {
-        launcher.launch(
-            Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
-                .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, cn),
-        )
-    } catch (e: Exception) {
-        openChooser(ctx, launcher)
+    val direct = listOf(
+        Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+            .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, cn),
+        // AOSP live picker preview, used by OEM builds that do not handle the standard action
+        Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
+            .setClassName("com.android.wallpaper.livepicker", "com.android.wallpaper.livepicker.LiveWallpaperChange")
+            .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, cn),
+        Intent("android.service.wallpaper.CHANGE_LIVE_WALLPAPER")
+            .setClassName("com.android.wallpaper.livepicker", "com.android.wallpaper.livepicker.LiveWallpaperPreview")
+            .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, cn),
+    )
+    for (i in direct) {
+        try {
+            launcher.launch(i)
+            return
+        } catch (_: Exception) {}
     }
+    openChooser(ctx, launcher)
 }
 
 private fun openChooser(ctx: Context, launcher: androidx.activity.result.ActivityResultLauncher<Intent>) {

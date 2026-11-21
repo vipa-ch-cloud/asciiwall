@@ -13,8 +13,8 @@ android {
         applicationId = "dev.asciiwall.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "1.3"
+        versionCode = 5
+        versionName = "1.4"
     }
     val ksProps = Properties().apply {
         val f = rootProject.file("keystore.properties")

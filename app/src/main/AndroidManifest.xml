@@ -3,6 +3,12 @@
 
     <uses-feature android:name="android.software.live_wallpaper" android:required="true" />
 
+    <queries>
+        <intent><action android:name="android.service.wallpaper.CHANGE_LIVE_WALLPAPER" /></intent>
+        <intent><action android:name="android.service.wallpaper.LIVE_WALLPAPER_CHOOSER" /></intent>
+        <intent><action android:name="android.intent.action.SET_WALLPAPER" /></intent>
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
