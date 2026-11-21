@@ -127,6 +127,17 @@ private fun Root() {
         }.onFailure { Toast.makeText(ctx, R.string.import_error, Toast.LENGTH_LONG).show() }
     }
 
+    var wpStart by remember { mutableLongStateOf(0L) }
+    var wpFallback by remember { mutableStateOf(false) }
+    val wpLauncherRef = remember { mutableStateOf<androidx.activity.result.ActivityResultLauncher<Intent>?>(null) }
+    val wpLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+        val quick = android.os.SystemClock.elapsedRealtime() - wpStart < 1500
+        if (wpStart != 0L && quick && !wpFallback && !isOurWallpaper(ctx)) { wpFallback = true; openChooser(ctx, wpLauncherRef.value!!) }
+        else wpFallback = false
+        wpStart = 0L
+    }
+    wpLauncherRef.value = wpLauncher
+
     BackHandler(enabled = tab != 0) { tab = 0 }
 
     val items = listOf(
@@ -165,7 +176,7 @@ private fun Root() {
                             active = active, customs = customs,
                             onOpen = { editing = it; tab = 1 },
                             onApply = ::apply,
-                            onSetWallpaper = { apply(active); setWallpaper(ctx) },
+                            onSetWallpaper = { apply(active); setWallpaper(ctx, wpLauncher) { wpStart = it } },
                             onImport = { importer.launch(arrayOf("application/json", "text/plain", "*/*")) },
                         )
                         1 -> key(editing.id) {
@@ -202,26 +213,42 @@ private fun Root() {
     }
 }
 
-private fun setWallpaper(ctx: Context) {
-    val cn = ComponentName(ctx, AsciiWallpaperService::class.java)
-    fun launch(i: Intent) {
-        if (ctx !is android.app.Activity) i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        ctx.startActivity(i)
+private fun isOurWallpaper(ctx: Context): Boolean = runCatching {
+    WallpaperManager.getInstance(ctx).wallpaperInfo?.serviceName == AsciiWallpaperService::class.java.name
+}.getOrDefault(false)
+
+/** Запускает системное окно установки живых обоев; если система молча его закрыла — открывает общий выбор. */
+private fun setWallpaper(ctx: Context, launcher: androidx.activity.result.ActivityResultLauncher<Intent>, startedAt: (Long) -> Unit) {
+    if (isOurWallpaper(ctx)) {
+        Toast.makeText(ctx, R.string.wallpaper_already, Toast.LENGTH_SHORT).show()
+        return
     }
+    val cn = ComponentName(ctx, AsciiWallpaperService::class.java)
+    startedAt(android.os.SystemClock.elapsedRealtime())
     try {
-        launch(
+        launcher.launch(
             Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
                 .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, cn),
         )
     } catch (e: Exception) {
-        try {
-            launch(Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER))
-        } catch (e2: ActivityNotFoundException) {
-            Toast.makeText(ctx, R.string.no_chooser, Toast.LENGTH_LONG).show()
-        } catch (e2: Exception) {
-            Toast.makeText(ctx, ctx.getString(R.string.no_chooser) + ": " + (e2.message ?: e2.javaClass.simpleName), Toast.LENGTH_LONG).show()
-        }
+        openChooser(ctx, launcher)
     }
+}
+
+private fun openChooser(ctx: Context, launcher: androidx.activity.result.ActivityResultLauncher<Intent>) {
+    val variants = listOf(
+        Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER),
+        Intent(Intent.ACTION_SET_WALLPAPER),
+        Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS),
+    )
+    for (i in variants) {
+        try {
+            launcher.launch(i)
+            Toast.makeText(ctx, R.string.wallpaper_pick_hint, Toast.LENGTH_LONG).show()
+            return
+        } catch (_: Exception) {}
+    }
+    Toast.makeText(ctx, R.string.no_chooser, Toast.LENGTH_LONG).show()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

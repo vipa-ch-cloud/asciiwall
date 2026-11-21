@@ -207,4 +207,6 @@
     <string name="wallpaper_open_failed">Не удалось открыть выбор обоев: %1$s</string>
     <string name="ui_empty_title">Пока ничего</string>
     <string name="ui_theme_hint">Тема применяется сразу и сохраняется</string>
+    <string name="wallpaper_already">ASCII Wall уже установлены как обои — конфиг применён</string>
+    <string name="wallpaper_pick_hint">Выберите ASCII Wall в списке живых обоев</string>
 </resources>

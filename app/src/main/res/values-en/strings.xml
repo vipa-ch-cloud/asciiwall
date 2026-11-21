@@ -207,4 +207,6 @@
     <string name="wallpaper_open_failed">Could not open the wallpaper picker: %1$s</string>
     <string name="ui_empty_title">Nothing here yet</string>
     <string name="ui_theme_hint">The theme is applied instantly and saved</string>
+    <string name="wallpaper_already">ASCII Wall is already your wallpaper — config applied</string>
+    <string name="wallpaper_pick_hint">Pick ASCII Wall in the live wallpaper list</string>
 </resources>
